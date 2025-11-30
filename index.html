@@ -1,0 +1,444 @@
+
+import React, { useMemo, useState } from "react";
+import { BookOpen, GraduationCap, Upload, Search, Filter, FileText, Tags, School, Library } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+
+// -----------------------------
+// Datos simulados (MVP)
+// -----------------------------
+const resources = [
+  {
+    id: "r1",
+    titulo: "Introducción a la Hermenéutica Bíblica",
+    autores: ["Dra. M. Herrera"],
+    area: "Biblia",
+    tipo: "Artículo",
+    anio: 2023,
+    resumen:
+      "Marco metodológico para la interpretación bíblica en contextos latinoamericanos.",
+    etiquetas: ["hermenéutica", "exégesis", "contexto"],
+    archivoUrl: "/files/hermeneutica.pdf",
+  },
+  {
+    id: "r2",
+    titulo: "Teología Pastoral y Acompañamiento",
+    autores: ["P. J. Morales"],
+    area: "Pastoral",
+    tipo: "Libro",
+    anio: 2021,
+    resumen:
+      "Prácticas pastorales para comunidades rurales y urbanas.",
+    etiquetas: ["acompañamiento", "pastoral", "comunidad"],
+    archivoUrl: "/files/pastoral.pdf",
+  },
+  {
+    id: "r3",
+    titulo: "Historia de la Iglesia en Aysén",
+    autores: ["C. Soto", "A. Vega"],
+    area: "Historia",
+    tipo: "Tesis",
+    anio: 2024,
+    resumen:
+      "Estudio histórico sobre el desarrollo eclesial en la Patagonia chilena.",
+    etiquetas: ["historia", "patagonia", "iglesia"],
+    archivoUrl: "/files/iglesia_aysen.pdf",
+  },
+];
+
+const courses = [
+  {
+    id: "c1",
+    nombre: "Teología Sistemática I",
+    periodo: "2025-1",
+    docentes: ["Prof. L. Rojas"],
+    modulos: [
+      {
+        id: "m1",
+        titulo: "Revelación y Escritura",
+        items: [
+          { id: "i1", tipo: "Lectura", titulo: "Capítulo 1: Revelación", recursoRef: "r1" },
+          { id: "i2", tipo: "Tarea", titulo: "Ensayo breve (1000 palabras)", fecha: "2025-03-22" },
+        ],
+      },
+      {
+        id: "m2",
+        titulo: "Dios Uno y Trino",
+        items: [
+          { id: "i3", tipo: "Lectura", titulo: "Símbolos trinitarios clásicos", recursoRef: null },
+          { id: "i4", tipo: "Quiz", titulo: "Quiz semana 3", fecha: "2025-04-05" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "c2",
+    nombre: "Historia de la Iglesia Contemporánea",
+    periodo: "2025-1",
+    docentes: ["Dra. N. Campos"],
+    modulos: [
+      {
+        id: "m3",
+        titulo: "Siglo XX y movimientos",
+        items: [
+          { id: "i5", tipo: "Lectura", titulo: "Historia Iglesia Aysén", recursoRef: "r3" },
+          { id: "i6", tipo: "Foro", titulo: "Debate: Vaticano II", fecha: "2025-04-18" },
+        ],
+      },
+    ],
+  },
+];
+
+// -----------------------------
+// Componente principal
+// -----------------------------
+export default function RepositorioLMS() {
+  const [busqueda, setBusqueda] = useState("");
+  const [area, setArea] = useState<string | undefined>(undefined);
+  const [tipo, setTipo] = useState<string | undefined>(undefined);
+  const [anio, setAnio] = useState<string | undefined>(undefined);
+  const [etiquetas, setEtiquetas] = useState<string[]>([]);
+  const [tab, setTab] = useState("repositorio");
+  const [openUpload, setOpenUpload] = useState(false);
+
+  const etiquetasDisponibles = useMemo(
+    () => Array.from(new Set(resources.flatMap((r) => r.etiquetas))),
+    []
+  );
+
+  const resultados = useMemo(() => {
+    return resources.filter((r) => {
+      const matchTexto =
+        !busqueda ||
+        r.titulo.toLowerCase().includes(busqueda.toLowerCase()) ||
+        r.autores.join(" ").toLowerCase().includes(busqueda.toLowerCase()) ||
+        r.resumen.toLowerCase().includes(busqueda.toLowerCase());
+      const matchArea = !area || r.area === area;
+      const matchTipo = !tipo || r.tipo === tipo;
+      const matchAnio = !anio || String(r.anio) === anio;
+      const matchTags = etiquetas.length === 0 || etiquetas.every((t) => r.etiquetas.includes(t));
+      return matchTexto && matchArea && matchTipo && matchAnio && matchTags;
+    });
+  }, [busqueda, area, tipo, anio, etiquetas]);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+      {/* Header */}
+      <header className="sticky top-0 z-20 bg-white/80 backdrop-blur border-b">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-3">
+          <Library className="text-indigo-600" />
+          <div>
+            <h1 className="text-2xl font-semibold">Repositorio Académico – Facultad de Educación Teológica</h1>
+            <p className="text-sm text-slate-600">Recursos, cursos y evaluaciones en un solo lugar (MVP tipo Canvas)</p>
+          </div>
+          <div className="ml-auto flex gap-2">
+            <Dialog open={openUpload} onOpenChange={setOpenUpload}>
+              <DialogTrigger asChild>
+                <Button className="bg-indigo-600 hover:bg-indigo-700">
+                  <Upload className="mr-2 h-4 w-4" /> Subir recurso
+                </Button>
+              </DialogTrigger>
+              <UploadDialog onClose={() => setOpenUpload(false)} />
+            </Dialog>
+          </div>
+        </div>
+      </header>
+
+      {/* Tabs */}
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList className="grid grid-cols-3 w-full">
+            <TabsTrigger value="repositorio" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" /> Repositorio
+            </TabsTrigger>
+            <TabsTrigger value="aulas" className="flex items-center gap-2">
+              <GraduationCap className="h-4 w-4" /> Aulas (LMS)
+            </TabsTrigger>
+            <TabsTrigger value="mi-biblioteca" className="flex items-center gap-2">
+              <School className="h-4 w-4" /> Mi Biblioteca
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Repositorio */}
+          <TabsContent value="repositorio" className="mt-6">
+            <div className="grid grid-cols-12 gap-6">
+              {/* Filtros */}
+              <aside className="col-span-12 lg:col-span-3">
+                <Card className="rounded-2xl shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Filter className="h-4 w-4" /> Filtros
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Buscar</label>
+                      <div className="relative">
+                        <Search className="h-4 w-4 absolute left-2 top-2.5 text-slate-500" />
+                        <Input
+                          placeholder="Título, autor, palabras clave"
+                          value={busqueda}
+                          onChange={(e) => setBusqueda(e.target.value)}
+                          className="pl-8"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Área</label>
+                      <Select value={area} onValueChange={setArea}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Todas" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Biblia">Biblia</SelectItem>
+                          <SelectItem value="Pastoral">Pastoral</SelectItem>
+                          <SelectItem value="Historia">Historia</SelectItem>
+                          <SelectItem value="Ética">Ética</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Tipo</label>
+                      <Select value={tipo} onValueChange={setTipo}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Todos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Artículo">Artículo</SelectItem>
+                          <SelectItem value="Libro">Libro</SelectItem>
+                          <SelectItem value="Tesis">Tesis</SelectItem>
+                          <SelectItem value="Recurso didáctico">Recurso didáctico</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Año</label>
+                      <Select value={anio} onValueChange={setAnio}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Todos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[2025, 2024, 2023, 2022, 2021].map((y) => (
+                            <SelectItem value={String(y)} key={y}>
+                              {y}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Etiquetas</label>
+                      <div className="flex flex-wrap gap-2">
+                        {etiquetasDisponibles.map((t) => {
+                          const active = etiquetas.includes(t);
+                          return (
+                            <Badge
+                              key={t}
+                              onClick={() =>
+                                setEtiquetas((prev) =>
+                                  active ? prev.filter((x) => x !== t) : [...prev, t]
+                                )
+                              }
+                              className={`cursor-pointer ${
+                                active ? "bg-indigo-600" : "bg-slate-200 text-slate-700"
+                              }`}
+                            >
+                              <Tags className="h-3 w-3 mr-1" /> {t}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => {
+                        setBusqueda("");
+                        setArea(undefined);
+                        setTipo(undefined);
+                        setAnio(undefined);
+                        setEtiquetas([]);
+                      }}>Limpiar</Button>
+                      <Button className="bg-indigo-600 hover:bg-indigo-700">Aplicar</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </aside>
+
+              {/* Resultados */}
+              <section className="col-span-12 lg:col-span-9 space-y-4">
+                {resultados.length === 0 ? (
+                  <Card className="rounded-2xl">
+                    <CardContent className="py-12 text-center text-slate-600">
+                      No se encontraron recursos con los criterios seleccionados.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {resultados.map((r) => (
+                      <Card key={r.id} className="rounded-2xl shadow-sm">
+                        <CardHeader>
+                          <CardTitle className="text-base">{r.titulo}</CardTitle>
+                          <p className="text-sm text-slate-600">{r.autores.join(", ")}</p>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="flex gap-2">
+                            <Badge variant="secondary">{r.area}</Badge>
+                            <Badge variant="secondary">{r.tipo}</Badge>
+                            <Badge variant="secondary">{r.anio}</Badge>
+                          </div>
+                          <p className="text-sm text-slate-700 line-clamp-3">{r.resumen}</p>
+                          <div className="flex flex-wrap gap-2">
+                            {r.etiquetas.map((t) => (
+                              <Badge key={t} variant="outline">{t}</Badge>
+                            ))}
+                          </div>
+                          <div className="flex gap-2 pt-2">
+                            <Button variant="outline" className="gap-2">
+                              <FileText className="h-4 w-4" /> Ver / Descargar
+                            </Button>
+                            <Button variant="outline">Citar</Button>
+                            <Button className="bg-indigo-600 hover:bg-indigo-700">Guardar</Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          </TabsContent>
+
+          {/* Aulas (LMS) */}
+          <TabsContent value="aulas" className="mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {courses.map((c) => (
+                <Card key={c.id} className="rounded-2xl">
+                  <CardHeader>
+                    <CardTitle className="text-base">{c.nombre}</CardTitle>
+                    <p className="text-sm text-slate-600">{c.periodo} • {c.docentes.join(", ")}</p>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {c.modulos.map((m) => (
+                      <div key={m.id} className="border rounded-xl p-3">
+                        <h4 className="text-sm font-medium">{m.titulo}</h4>
+                        <ul className="mt-2 space-y-2">
+                          {m.items.map((it) => (
+                            <li key={it.id} className="flex items-center justify-between text-sm">
+                              <span>
+                                <Badge variant="secondary" className="mr-2">{it.tipo}</Badge>
+                                {it.titulo}
+                              </span>
+                              {it.recursoRef && (
+                                <Button variant="outline" size="sm">Abrir recurso</Button>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                    <div className="pt-2">
+                      <Button variant="outline" className="w-full">Entrar al aula</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Mi biblioteca */}
+          <TabsContent value="mi-biblioteca" className="mt-6">
+            <Card className="rounded-2xl">
+              <CardContent className="py-12 text-center text-slate-600">
+                Aquí verás tus recursos guardados, cursos inscritos y actividad reciente.
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t">
+        <div className="max-w-7xl mx-auto px-4 py-6 text-sm text-slate-500">
+          © {new Date().getFullYear()} Facultad de Educación Teológica • Repositorio & LMS (MVP). Cumple con WCAG 2.2 (AA) y mejores prácticas.
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+// -----------------------------
+// Diálogo de subida de recurso (MVP)
+// -----------------------------
+function UploadDialog({ onClose }: { onClose: () => void }) {
+  const [titulo, setTitulo] = useState("");
+  const [autores, setAutores] = useState("");
+  const [area, setArea] = useState<string | undefined>(undefined);
+  const [tipo, setTipo] = useState<string | undefined>(undefined);
+  const [anio, setAnio] = useState<string | undefined>(undefined);
+  const [resumen, setResumen] = useState("");
+  const [etiquetas, setEtiquetas] = useState<string>("");
+  const [aceptaLicencia, setAceptaLicencia] = useState(false);
+
+  const canSubmit = titulo && autores && area && tipo && anio && aceptaLicencia;
+
+  return (
+    <DialogContent className="sm:max-w-xl">
+      <DialogHeader>
+        <DialogTitle>Subir nuevo recurso</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-4">
+        <Input placeholder="Título" value={titulo} onChange={(e) => setTitulo(e.target.value)} />
+        <Input placeholder="Autores (separados por coma)" value={autores} onChange={(e) => setAutores(e.target.value)} />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <Select value={area} onValueChange={setArea}>
+            <SelectTrigger><SelectValue placeholder="Área" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Biblia">Biblia</SelectItem>
+              <SelectItem value="Pastoral">Pastoral</SelectItem>
+              <SelectItem value="Historia">Historia</SelectItem>
+              <SelectItem value="Ética">Ética</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={tipo} onValueChange={setTipo}>
+            <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Artículo">Artículo</SelectItem>
+              <SelectItem value="Libro">Libro</SelectItem>
+              <SelectItem value="Tesis">Tesis</SelectItem>
+              <SelectItem value="Recurso didáctico">Recurso didáctico</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={anio} onValueChange={setAnio}>
+            <SelectTrigger><SelectValue placeholder="Año" /></SelectTrigger>
+            <SelectContent>
+              {[2025, 2024, 2023, 2022, 2021].map((y) => (
+                <SelectItem value={String(y)} key={y}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Textarea placeholder="Resumen / Abstract" value={resumen} onChange={(e) => setResumen(e.target.value)} />
+        <Input placeholder="Etiquetas (separadas por coma)" value={etiquetas} onChange={(e) => setEtiquetas(e.target.value)} />
+        <div className="flex items-center gap-2 text-sm">
+          <Checkbox id="lic" checked={aceptaLicencia} onCheckedChange={(v) => setAceptaLicencia(Boolean(v))} />
+          <label htmlFor="lic">Confirmo derechos y licencia (p.ej., CC BY-NC) y protección de datos personales.</label>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>Cancelar</Button>
+        <Button disabled={!canSubmit} className="bg-indigo-600 hover:bg-indigo-700">Guardar (MVP)</Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
